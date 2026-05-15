@@ -126,7 +126,12 @@ app.post('/api/analyze', async (req, res) => {
   }
 });
 
-// 서버 시작
-app.listen(port, () => {
-  console.log(`서버가 http://localhost:${port} 에서 실행 중입니다.`);
-});
+// 서버 시작 (로컬 환경에서만 실행)
+if (process.env.NODE_ENV !== 'production') {
+  app.listen(port, () => {
+    console.log(`서버가 http://localhost:${port} 에서 실행 중입니다.`);
+  });
+}
+
+// Vercel 서버리스 함수로 동작하기 위해 앱 인스턴스 내보내기
+module.exports = app;
