@@ -8,6 +8,7 @@
 
 const express = require('express');
 const cors = require('cors');
+const path = require('path'); // 경로 처리를 위한 path 모듈 추가
 const { OpenAI } = require('openai');
 require('dotenv').config();
 
@@ -17,7 +18,10 @@ const port = process.env.PORT || 3000;
 // 미들웨어 설정
 app.use(cors());
 app.use(express.json());
-app.use(express.static('public')); // 정적 파일(HTML, CSS, JS) 서비스
+
+// [수정] 정적 파일(HTML, CSS, JS) 서비스 경로를 절대 경로로 설정
+// 이렇게 하면 서버 실행 위치에 상관없이 public 폴더를 안전하게 찾습니다.
+app.use(express.static(path.join(__dirname, '../public')));
 
 // OpenAI 클라이언트 초기화
 const openai = new OpenAI({
@@ -25,10 +29,10 @@ const openai = new OpenAI({
 });
 
 /**
- * [POST] /api/analyze
- * 텍스트 감성 분석 요청 처리
+ * [POST] 모든 경로 처리 (Vercel 서버리스 환경 대응)
+ * Vercel이 /api/analyze 요청을 이 파일로 전달할 때 발생하는 경로 미스매치를 방지합니다.
  */
-app.post('/api/analyze', async (req, res) => {
+app.post('*', async (req, res) => {
   const { text } = req.body;
 
   // [1] 입력값 검증
@@ -95,17 +99,16 @@ app.post('/api/analyze', async (req, res) => {
         .from('analysis_logs')
         .insert([
           {
-            input_text: text, // 필요 시 이것도 암호화 가능 (encrypt(text))
+            input_text: text,
             sentiment: result.sentiment,
             confidence: result.confidence,
             reason: result.reason,
-            user_ip: encryptedIp // 식별 정보 암호화 저장
+            user_ip: encryptedIp
           }
         ]);
 
       if (dbError) {
         console.error("Supabase 저장 중 오류 발생 (로그만 기록):", dbError.message);
-        // 사용자에게는 성공 응답을 보내되, 서버 로그만 남깁니다.
       }
     } catch (dbCatchError) {
       console.error("데이터베이스 연동 실패 (로그만 기록):", dbCatchError);
